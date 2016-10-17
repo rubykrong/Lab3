@@ -1,3 +1,10 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <netdb.h> 
 #include <fcntl.h>
 
@@ -42,4 +49,35 @@ int main(int argc, char *argv[])
 	bzero(filename, 256);
 	fgets(filename, 255, stdin);
 	n = write(sockfd, filename, 255);
+	if (n < 0) 
+		error("ERROR writing to socket");
+	bzero(buffer,256);
+	n = read(sockfd, &msgnumber, sizeof(int));
+	if (n < 0) 
+		error("ERROR reading from socket");
+	if (msgnumber == -1)
+	{
+		printf("File you want does not exist\n");
+		return 0;
+	}
+	filename[strlen(filename) - 1] = '1';
+	outfd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	printf("Downloading file...\n");
+	for (i = 0; i < msgnumber; i++)
+	{
+		n = read(sockfd, buffer, BUF_SIZE - 1);
+		if (n < 0)
+			error("ERROR reading from socket");
+		write(outfd, buffer, n);
+	}
+	printf("Downloaded successfully to %s.\n", filename);
+	close(outfd);
+	close(sockfd);
+	return 0;
+}
+
+void error(const char *msg)
+{
+	perror(msg);
+	exit(1);
 }
